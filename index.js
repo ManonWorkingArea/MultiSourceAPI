@@ -1,13 +1,12 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const axios = require('axios');
-
-const mongoRoutes = require('./routes/mongodb');
-const postgreRoutes = require('./routes/postgresql');
-const mysqlRoutes = require('./routes/mysql');
-const firestoreRoutes = require('./routes/firestore');
+const express           = require('express');
+const bodyParser        = require('body-parser');
+const cors              = require('cors');
+const dotenv            = require('dotenv');
+const axios             = require('axios');
+const mongoRoutes       = require('./routes/mongodb');
+const postgreRoutes     = require('./routes/postgresql');
+const mysqlRoutes       = require('./routes/mysql');
+const firestoreRoutes   = require('./routes/firestore');
 
 dotenv.config();
 
