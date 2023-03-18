@@ -1,7 +1,8 @@
-function addHeaders(source, clientID) {
+function addHeaders(source, clientID, clientToken) {
   return (req, res, next) => {
     res.setHeader('X-Source', source);
     res.setHeader('X-ClientID', clientID);
+    res.setHeader('X-ClientToken', clientToken);
     next();
   };
 }
@@ -17,7 +18,7 @@ const sourceMap = {
   function setupRoutes(app, clientConfigs) {
     app.use('/api', (req, res, next) => {
       const urlParts = req.url.split('/');
-      const clientToken = urlParts[1];
+      const clientToken = urlParts[1] || '523409d67lEXMbFU';
       const clientConfigExists = Object.values(clientConfigs).some(config => config.clientToken === clientToken);
   
       if (!clientToken) {
@@ -28,15 +29,33 @@ const sourceMap = {
         next();
       }
     });
-  
-    
-    for (const client in clientConfigs) {
-      const config = clientConfigs[client];
-      const sourceFile = sourceMap[config.source];
+
+
+    const connections = {};
+
+    for (const clientConfig of clientConfigs) {
+      if (!connections[clientConfig.source]) {
+        connections[clientConfig.source] = [];
+      }
+
+      connections[clientConfig.source].push({
+        clientToken: clientConfig.clientToken,
+        connection: clientConfig.connection
+      });
+    }
+
+    for (const source in sourceMap) {
+      const sourceFile = sourceMap[source];
       const sourceRoutes = require(sourceFile);
     
-      app.use(`/api/${config.clientToken}`, addHeaders(config.source, config.clientId), sourceRoutes(config));
-    }  
+      const config = clientConfigs.find(c => c.source === source);
+      if (!config) {
+        console.error(`No config found for source "${source}"`);
+        continue;
+      } 
+      app.use(`/api`, addHeaders(source, config.clientId, config.clientToken), sourceRoutes(config, connections[source]));
+    }
+    
   }
   
   module.exports = setupRoutes;  
