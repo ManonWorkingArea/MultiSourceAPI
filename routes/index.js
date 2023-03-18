@@ -29,6 +29,7 @@ const sourceMap = {
       }
     });
   
+    
     for (const client in clientConfigs) {
       const config = clientConfigs[client];
       const sourceFile = sourceMap[config.source];
