@@ -63,7 +63,7 @@ module.exports = function (clientConfig, connections) {
             });
             
             router.post(`/${item.clientToken}/:collection`, async (req, res) => {
-                
+                const collectionName = req.params.collection;
                 const collection = db.collection(collectionName);
                 const { data, options } = req.body;
             
