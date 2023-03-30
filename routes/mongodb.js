@@ -6,6 +6,14 @@ module.exports = function (clientConfig, connections) {
     const express       = require(`express`);
     const mongoose      = require(`mongoose`);
     const { ObjectId }  = require(`mongodb`);
+
+    function safeObjectId(id) {
+        if (!ObjectId.isValid(id)) {
+          return null;
+        }
+        return new ObjectId(id);
+      }
+
     connections.forEach(item => {
         // Use MongoClient to connect to MongoDB
         const client = new MongoClient(item.connection.URI, {
@@ -171,36 +179,44 @@ module.exports = function (clientConfig, connections) {
                 const collectionName = req.params.collection;
                 const collection = db.collection(collectionName);
                 try {
-                    const { method, args } = req.body;
-    
-                    if (!method || !Array.isArray(args)) {
-                        res.status(400).json({ message: `Invalid request format` });
-                        return;
-                    }
-    
-                    if (method === `aggregate`) {
-                        // Convert string ObjectIds to ObjectId instances
-                        args[0] = args[0].map((stage) => {
-                            for (const key in stage) {
-                            if (stage[key] instanceof Object) {
-                                for (const innerKey in stage[key]) {
-                                if (typeof stage[key][innerKey] === `string` && innerKey === `_id`) {
-                                    stage[key][innerKey] = safeObjectId(stage[key][innerKey]);
-                                }
-                                }
+                  const { method, args } = req.body;
+              
+                  if (!method || !Array.isArray(args)) {
+                    res.status(400).json({ message: `Invalid request format` });
+                    return;
+                  }
+              
+                  if (method === `aggregate`) {
+                    // Convert string ObjectIds to ObjectId instances
+                    args[0] = args[0].map((stage) => {
+                      for (const key in stage) {
+                        if (stage[key] instanceof Object) {
+                          for (const innerKey in stage[key]) {
+                            if (typeof stage[key][innerKey] === `string` && innerKey === `_id`) {
+                              stage[key][innerKey] = safeObjectId(stage[key][innerKey]);
                             }
-                            }
-                            return stage;
-                        });
+                          }
+                        }
+                      }
+                      return stage;
+                    });
+                  }
+              
+                  if (method === `find`) {
+                    // Convert array of string ObjectIds to array of ObjectId instances
+                    if (args[0]._id?.$in) {
+                      args[0]._id.$in = args[0]._id.$in.map((id) => safeObjectId(id));
                     }
-    
-                    const result = await collection[method](...args).toArray(); // Handle the results as an array directly
-                    console.log("Query result:", result); // Add this line to log the result
-                    res.status(200).json(result);
+                  }
+              
+                  const result = await collection[method](...args).toArray(); // Handle the results as an array directly
+                  console.log("Query result:", result); // Add this line to log the result
+                  res.status(200).json(result);
                 } catch (err) {
-                    res.status(500).json({ message: err.message });
+                  res.status(500).json({ message: err.message });
                 }
-            });
+              });
+              
             
             // Search for documents in a collection
             router.post(`/${item.clientToken}/:collection/search`, async (req, res) => {
