@@ -204,10 +204,11 @@ module.exports = function (clientConfig, connections) {
               
                   if (method === `find`) {
                     // Convert array of string ObjectIds to array of ObjectId instances
-                    if (args[0]._id?.$in) {
-                      args[0]._id.$in = args[0]._id.$in.map((id) => safeObjectId(id));
+                    if (args[0]._id?.$in && Array.isArray(args[0]._id.$in)) {
+                        args[0]._id.$in = args[0]._id.$in.map((id) => safeObjectId(id));
                     }
-                  }
+                }
+                
               
                   const result = await collection[method](...args).toArray(); // Handle the results as an array directly
                   console.log("Query result:", result); // Add this line to log the result
