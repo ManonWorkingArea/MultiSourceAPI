@@ -32,8 +32,8 @@ module.exports = function (clientConfig, connections) {
 
             function setCustomHeader(req, res, next) {
                 const data      = global.ClientConfiguration;
-                const foundData = data.find(item => item.clientToken === clientToken);
-                res.set('X-Client-Token', clientToken);
+                const foundData = data.find(item2 => item2.clientToken === item.clientToken);
+                res.set('X-Client-Token', item.clientToken);
                 res.set('X-Client-Source', foundData.source);
                 res.set('X-Client-Name', foundData.clientId);
                 next();
