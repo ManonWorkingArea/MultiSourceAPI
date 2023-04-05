@@ -8,17 +8,17 @@ function addHeaders(source, clientID, clientToken) {
 }
 
 const sourceMap = {
-    mongodb: './mongodb',
-    postgresql: './postgresql',
-    mysql: './mysql',
-    firestore: './firestore',
-    api: './api'
+  api: './api',
+  mongodb: './mongodb',
+  postgresql: './postgresql',
+  mysql: './mysql',
+  firestore: './firestore'
   };
   
   function setupRoutes(app, clientConfigs) {
     app.use('/api', (req, res, next) => {
       const urlParts = req.url.split('/');
-      const clientToken = urlParts[1] || '523409d67lEXMbFU';
+      const clientToken = urlParts[1] || '04ZQdW5sGA9C9eXXXk6x';
       const clientConfigExists = Object.values(clientConfigs).some(config => config.clientToken === clientToken);
   
       if (!clientToken) {
@@ -53,7 +53,9 @@ const sourceMap = {
         console.error(`No config found for source "${source}"`);
         continue;
       } 
-      app.use(`/api`, addHeaders(source, config.clientId, config.clientToken), sourceRoutes(config, connections[source]));
+
+      console.log("source",config.clientToken);
+      app.use(`/api`, sourceRoutes(config, connections[source]));
     }
     
   }

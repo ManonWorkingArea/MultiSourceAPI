@@ -4,6 +4,7 @@ const MongoClient = require(`mongodb`).MongoClient;
 module.exports = function (clientConfig, connections) {
     const router        = Router();
     const express       = require(`express`);
+    
     const mongoose      = require(`mongoose`);
     const { ObjectId }  = require(`mongodb`);
 
@@ -13,6 +14,8 @@ module.exports = function (clientConfig, connections) {
         }
         return new ObjectId(id);
       }
+
+      console.log("connections",connections);
 
     connections.forEach(item => {
         // Use MongoClient to connect to MongoDB
@@ -26,11 +29,20 @@ module.exports = function (clientConfig, connections) {
                 console.error(err);
                 return;
             }
+
+            function setCustomHeader(req, res, next) {
+                const data      = global.ClientConfiguration;
+                const foundData = data.find(item => item.clientToken === clientToken);
+                res.set('X-Client-Token', clientToken);
+                res.set('X-Client-Source', foundData.source);
+                res.set('X-Client-Name', foundData.clientId);
+                next();
+            }
     
             const db = client.db();
-            
+
             // Get all GET connection
-            router.get(`/${item.clientToken}/:collection`, async (req, res) => {
+            router.get(`/${item.clientToken}/:collection`, setCustomHeader, async (req, res) => {
                 const collectionName = req.params.collection;
                 const collection = db.collection(collectionName);
                 try {
@@ -42,7 +54,7 @@ module.exports = function (clientConfig, connections) {
             });
 
             // Get a single document by ID from a collection
-            router.get(`/${item.clientToken}/:collection/:id`, async (req, res) => {
+            router.get(`/${item.clientToken}/:collection/:id`, setCustomHeader, async (req, res) => {
                 const collectionName = req.params.collection;
                 const documentId = req.params.id;
                 const joinCollection = req.query.join; // Updated variable name
@@ -70,7 +82,7 @@ module.exports = function (clientConfig, connections) {
                 }
             });
             
-            router.post(`/${item.clientToken}/:collection`, async (req, res) => {
+            router.post(`/${item.clientToken}/:collection`, setCustomHeader, async (req, res) => {
                 const collectionName = req.params.collection;
                 const collection = db.collection(collectionName);
                 const { data, options } = req.body;
@@ -123,7 +135,7 @@ module.exports = function (clientConfig, connections) {
             });
             
             // Update a document by ID in a collection
-            router.put(`/${item.clientToken}/:collection/:id`, async (req, res) => {
+            router.put(`/${item.clientToken}/:collection/:id`, setCustomHeader, async (req, res) => {
                 const collectionName = req.params.collection;
                 const collection = db.collection(collectionName);
                 const { data, options } = req.body;
@@ -159,7 +171,7 @@ module.exports = function (clientConfig, connections) {
             });
     
             // Delete a document by ID from a collection
-            router.delete(`/${item.clientToken}/:collection/:id`, async (req, res) => {
+            router.delete(`/${item.clientToken}/:collection/:id`, setCustomHeader, async (req, res) => {
             const collectionName = req.params.collection;
             const collection = db.collection(collectionName);
             try {
@@ -175,7 +187,7 @@ module.exports = function (clientConfig, connections) {
             }
             });
     
-            router.post(`/${item.clientToken}/:collection/query`, async (req, res) => {
+            router.post(`/${item.clientToken}/:collection/query`, setCustomHeader, async (req, res) => {
                 const collectionName = req.params.collection;
                 const collection = db.collection(collectionName);
                 try {
@@ -219,7 +231,7 @@ module.exports = function (clientConfig, connections) {
               
             
             // Search for documents in a collection
-            router.post(`/${item.clientToken}/:collection/search`, async (req, res) => {
+            router.post(`/${item.clientToken}/:collection/search`, setCustomHeader, async (req, res) => {
                 const collectionName = req.params.collection;
                 const collection = db.collection(collectionName);
                 const query = req.body;
@@ -234,7 +246,7 @@ module.exports = function (clientConfig, connections) {
             });
     
             // Add, update, or remove an element in a subarray of a document
-            router.post(`/${item.clientToken}/:collection/:documentId/:arrayField`, async (req, res) => {
+            router.post(`/${item.clientToken}/:collection/:documentId/:arrayField`, setCustomHeader, async (req, res) => {
                 const collectionName = req.params.collection;
                 const documentId = req.params.documentId;
                 const arrayField = req.params.arrayField;
