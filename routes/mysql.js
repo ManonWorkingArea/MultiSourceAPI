@@ -1,22 +1,27 @@
 const { Router } = require('express');
 const mysql = require('mysql2/promise');
 
-module.exports = function (clientConfig) {
+module.exports = function (clientConfig,connections) {
     const express = require('express');
     const router = express.Router();
 
-    const connectionConfig = {
-        ...clientConfig.connection,
-        multipleStatements: true,
-    };
+    console.log("connections",connections);
 
-    // Create a connection pool
-    const pool = mysql.createPool(connectionConfig);
+    const pools = {};
+    for (const connection of connections) {
+        const connectionConfig = {
+            ...connection.connection,
+            multipleStatements: true,
+        };
+        pools[connection.clientToken] = mysql.createPool(connectionConfig);
+        console.log("pools",pools);
+    }
 
     // Execute an advanced query
-    router.post('/query', async (req, res) => {
+    router.post('/:clientToken/query', async (req, res) => {
         const query = req.body.query;
         try {
+        const pool = pools[clientToken];
         const [result] = await pool.query(query);
         console.log('Result:', result);
         res.status(200).json(result);
@@ -25,13 +30,13 @@ module.exports = function (clientConfig) {
         res.status(500).json({ message: err.message });
         }
     });
-    
 
     // Drop a table
-    router.delete('/drop/:table', async (req, res) => {
+    router.delete('/:clientToken/drop/:table', async (req, res) => {
         const tableName = req.params.table;
         try {
         const queryText = `DROP TABLE ${tableName}`; // Insert table name directly
+        const pool = pools[clientToken];
         await pool.query(queryText);
         res.status(200).json({ message: `Table ${tableName} dropped` });
         } catch (err) {
@@ -39,7 +44,7 @@ module.exports = function (clientConfig) {
         }
     });
 
-    router.get('/tables', async (req, res) => {
+    router.get('/:clientToken/tables', async (req, res) => {
         try {
             const queryText = `
                 SELECT table_name
@@ -47,6 +52,7 @@ module.exports = function (clientConfig) {
                 WHERE table_schema = (SELECT DATABASE())
                 ORDER BY table_name;
             `;
+            const pool = pools[clientToken];
             const [result] = await pool.query(queryText);
     
             res.status(200).json(result);
@@ -56,11 +62,12 @@ module.exports = function (clientConfig) {
     });
     
     // Get all records from a table
-    router.get('/:table', async (req, res) => {
+    router.get('/:clientToken/:table', async (req, res) => {
         console.log('Received request at /query');
         const tableName = req.params.table;
 
         try {
+        const pool = pools[clientToken];
         const [result] = await pool.query(`SELECT * FROM ${tableName}`);
         res.status(200).json(result);
         } catch (err) {
@@ -69,11 +76,12 @@ module.exports = function (clientConfig) {
     });
 
     // Get a single record by ID from a table
-    router.get('/:table/:id', async (req, res) => {
+    router.get('/:clientToken/:table/:id', async (req, res) => {
         const tableName = req.params.table;
         const recordId = req.params.id;
 
         try {
+        const pool = pools[clientToken];
         const [result] = await pool.query(`SELECT * FROM ${tableName} WHERE _id = ?`, [recordId]);
 
         if (result.length === 0) {
@@ -88,7 +96,7 @@ module.exports = function (clientConfig) {
     });
 
     // Insert a record into a table
-    router.post('/:table', async (req, res) => {
+    router.post('/:clientToken/:table', async (req, res) => {
         const tableName = req.params.table;
         const data = req.body.data;
 
@@ -99,6 +107,7 @@ module.exports = function (clientConfig) {
             const placeholders = values.map((_, i) => `?`).join(', ');
 
             const insertQuery = `INSERT INTO ${tableName} (${columns}) VALUES (${placeholders})`;
+            const pool = pools[clientToken];
             const [result] = await pool.query(insertQuery, values);
             
             const lastInsertId = result.insertId;
@@ -111,7 +120,7 @@ module.exports = function (clientConfig) {
     });
 
     // Update a record by ID in a table
-    router.put('/:table/:id', async (req, res) => {
+    router.put('/:clientToken/:table/:id', async (req, res) => {
         const tableName = req.params.table;
         const recordId = req.params.id;
         const data = req.body.data;
@@ -123,6 +132,7 @@ module.exports = function (clientConfig) {
             const values = Object.values(data).concat(recordId);
 
             const updateQuery = `UPDATE ${tableName} SET ${setClause}, updatedAt = NOW() WHERE _id = ?`;
+            const pool = pools[clientToken];
             const [result] = await pool.query(updateQuery, values);
 
             if (result.affectedRows === 0) {
@@ -141,12 +151,13 @@ module.exports = function (clientConfig) {
     });
 
     // Delete a record by ID from a table
-    router.delete('/:table/:id', async (req, res) => {
+    router.delete('/:clientToken/:table/:id', async (req, res) => {
         const tableName = req.params.table;
         const recordId = req.params.id;
 
         try {
         const queryText = `DELETE FROM ${tableName} WHERE _id = ?`;
+        const pool = pools[clientToken];
         const [result] = await pool.query(queryText, [recordId]);
 
         if (result.affectedRows === 0) {
