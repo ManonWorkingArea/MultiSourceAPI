@@ -208,8 +208,7 @@ module.exports = function (clientConfig, connections) {
                         args[0]._id.$in = args[0]._id.$in.map((id) => safeObjectId(id));
                     }
                 }
-                
-              
+
                   const result = await collection[method](...args).toArray(); // Handle the results as an array directly
                   console.log("Query result:", result); // Add this line to log the result
                   res.status(200).json(result);

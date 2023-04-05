@@ -25,6 +25,7 @@ module.exports = function (clientConfig) {
         res.status(500).json({ message: err.message });
         }
     });
+    
 
     // Drop a table
     router.delete('/drop/:table', async (req, res) => {
