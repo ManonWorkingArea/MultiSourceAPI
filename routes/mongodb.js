@@ -216,7 +216,7 @@ module.exports = function (clientConfig, connections) {
                 const collectionName = req.params.collection;
                 const collection = db.collection(collectionName);
                 try {
-                  const { method, args } = req.body;
+                  const { method, args, hidden } = req.body;
               
                   if (!method || !Array.isArray(args)) {
                     res.status(400).json({ message: `Invalid request format` });
