@@ -253,10 +253,20 @@ module.exports = function (clientConfig, connections) {
                         }
                         args.push(projectionObject); // Add projection object to args array
                     }
-
+                    
                     const result = await collection[method](...args).toArray(); // Handle the results as an array directly
-                    console.log("Query result:", result); // Add this line to log the result
-                    res.status(200).json(result);
+                    
+                    if (hidden && Array.isArray(hidden)) { // Check if hidden field exists and is an array
+                        const resultWithHiddenFieldsRemoved = result.map(item => {
+                            for (const field of hidden) {
+                                delete item[field]; // Delete the field if it exists in the item
+                            }
+                            return item;
+                        });
+                        res.status(200).json(resultWithHiddenFieldsRemoved); // Send the modified result to the client
+                    } else {
+                        res.status(200).json(result); // Send the original result to the client if the hidden field is not provided
+                    }
                 } catch (err) {
                   res.status(500).json({ message: err.message });
                 }
