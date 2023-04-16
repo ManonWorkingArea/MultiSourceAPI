@@ -239,22 +239,29 @@ module.exports = function (clientConfig, connections) {
                     });
                   }
               
-                  if (method === `find`) {
-                    // Convert array of string ObjectIds to array of ObjectId instances
-                    if (args[0]._id?.$in && Array.isArray(args[0]._id.$in)) {
-                        args[0]._id.$in = args[0]._id.$in.map((id) => safeObjectId(id));
+                    if (method === `find`) {
+                        // Convert array of string ObjectIds to array of ObjectId instances
+                        if (args[0]._id?.$in && Array.isArray(args[0]._id.$in)) {
+                            args[0]._id.$in = args[0]._id.$in.map((id) => safeObjectId(id));
+                        }
                     }
-                }
 
-                  const result = await collection[method](...args).toArray(); // Handle the results as an array directly
-                  console.log("Query result:", result); // Add this line to log the result
-                  res.status(200).json(result);
+                    if (hidden && Array.isArray(hidden)) { // Check if hidden field exists and is an array
+                        const projectionObject = {};
+                        for (const field of hidden) {
+                            projectionObject[field] = 0;
+                        }
+                        args.push(projectionObject); // Add projection object to args array
+                    }
+
+                    const result = await collection[method](...args).toArray(); // Handle the results as an array directly
+                    console.log("Query result:", result); // Add this line to log the result
+                    res.status(200).json(result);
                 } catch (err) {
                   res.status(500).json({ message: err.message });
                 }
-              });
+            });
               
-            
             // Search for documents in a collection
             router.post(`/${item.clientToken}/:collection/search`, setCustomHeader, async (req, res) => {
                 const collectionName = req.params.collection;
