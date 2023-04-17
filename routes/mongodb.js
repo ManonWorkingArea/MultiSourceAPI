@@ -124,17 +124,21 @@ module.exports = function (clientConfig, connections) {
                         });
                     }
             
-                    // Check if options.uniqueFields is provided and find a document with the same field values
                     if (options && options.uniqueFields) {
-                        const uniqueQuery = options.uniqueFields.reduce((query, field) => {
-                            query[field] = data[field];
-                            return query;
-                        }, {});
-            
-                        const existingItem = await collection.findOne(uniqueQuery);
-            
-                        if (existingItem) {
-                            res.status(400).json({ message: `Duplicate entry for the unique fields: ${options.uniqueFields.join(`, `)}` });
+                        let duplicateFields = [];
+                        for (let i = 0; i < options.uniqueFields.length; i++) {
+                          const fields = options.uniqueFields[i];
+
+                          for (let j = 0; j < fields.length; j++) {
+                            const field = fields[j];
+                            const existingItem = await collection.findOne({ [field]: data[field] });
+                            if (existingItem) {
+                                duplicateFields.push(field);
+                            }
+                          }
+                        }
+                        if (duplicateFields.length > 0) {
+                            res.status(400).json({ message: "duplicate", fields: duplicateFields });
                             return;
                         }
                     }
