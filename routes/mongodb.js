@@ -157,7 +157,7 @@ module.exports = function (clientConfig, connections) {
             
                     const result = await collection.insertOne(data);
                     const insertedItem = await collection.findOne({ _id: result.insertedId });
-                    res.status(201).json(insertedItem);
+                    res.status(200).json(insertedItem);
                 } catch (err) {
                     res.status(500).json({ message: err.message });
                 }
