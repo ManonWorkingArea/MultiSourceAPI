@@ -231,10 +231,16 @@ module.exports = function (clientConfig, connections) {
               
                   if (method === `find`) {
                     const query = args[0];
+
+                    if (args[0]._id?.$in && Array.isArray(args[0]._id.$in)) {
+                        args[0]._id.$in = args[0]._id.$in.map((id) => safeObjectId(id));
+                    }
+
                     const projection = hidden ? hidden.reduce((obj, field) => {
                       obj[field] = 0;
                       return obj;
                     }, {}) : null;
+
                     const result = await collection[method](query, projection).skip(skip).limit(limit).toArray();
                     const total = await collection[method](query).count();
                     const totalPages = Math.ceil(total / limit);
