@@ -257,14 +257,15 @@ module.exports = function (clientConfig, connections) {
                     }
                     args.push(projectionObject);
                   }
-              
+                  
                   const total = await collection[method](...args).count();
-              
+                  
                   args.push({ limit, skip });
                   const result = await collection[method](...args).toArray();
-              
+                  
                   const totalPages = Math.ceil(total / limit);
-              
+                  
+                  let response;
                   if (hidden && Array.isArray(hidden)) {
                     const resultWithHiddenFieldsRemoved = result.map((item) => {
                       for (const field of hidden) {
@@ -272,26 +273,27 @@ module.exports = function (clientConfig, connections) {
                       }
                       return item;
                     });
+                    response = resultWithHiddenFieldsRemoved;
+                  } else {
+                    response = result;
+                  }
+                  
+                  if (paging) {
+                    const { page = 1, limit = 10 } = paging;
+                    const totalPages = Math.ceil(total / limit);
                     res.status(200).json({
-                      data: resultWithHiddenFieldsRemoved,
+                      data: response,
                       total,
-                      paging: paging
-                        ? { page: page, limit: limit, totalPages: totalPages }
-                        : undefined
+                      paging: { page, limit, totalPages }
                     });
                   } else {
-                    res.status(200).json({
-                      data: result,
-                      total,
-                      paging: paging
-                        ? { page: page, limit: limit, totalPages: totalPages }
-                        : undefined
-                    });
+                    res.status(200).json(response);
                   }
+                  
                 } catch (err) {
                   res.status(500).json({ message: err.message });
                 }
-              });
+            });
               
             
             // Search for documents in a collection
