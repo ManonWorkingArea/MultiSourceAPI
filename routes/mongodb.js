@@ -229,25 +229,11 @@ module.exports = function (clientConfig, connections) {
                     return;
                   }
               
-                  if (method === `aggregate`) {
-                    args[0] = args[0].map((stage) => {
-                      for (const key in stage) {
-                        if (stage[key] instanceof Object) {
-                          for (const innerKey in stage[key]) {
-                            if (typeof stage[key][innerKey] === `string` && innerKey === `_id`) {
-                              stage[key][innerKey] = safeObjectId(stage[key][innerKey]);
-                            }
-                          }
-                        }
-                      }
-                      return stage;
-                    });
-                  }
+                  const collectionMethod = collection[method];
+                  const queryArgs = Array.isArray(args) ? args.slice() : [];
               
-                  if (method === `find`) {
-                    if (args[0]._id?.$in && Array.isArray(args[0]._id.$in)) {
-                      args[0]._id.$in = args[0]._id.$in.map((id) => safeObjectId(id));
-                    }
+                  if (method === "find" && queryArgs[0] && queryArgs[0]._id?.$in) {
+                    queryArgs[0]._id.$in = queryArgs[0]._id.$in.map((id) => safeObjectId(id));
                   }
               
                   if (hidden && Array.isArray(hidden)) {
@@ -255,16 +241,16 @@ module.exports = function (clientConfig, connections) {
                     for (const field of hidden) {
                       projectionObject[field] = 0;
                     }
-                    args.push(projectionObject);
+                    queryArgs.push(projectionObject);
                   }
-                  
-                  const total = await collection[method](...args).count();
-                  
-                  args.push({ limit, skip });
-                  const result = await collection[method](...args).toArray();
-                  
+              
+                  const total = await collectionMethod(...queryArgs).count();
+              
+                  queryArgs.push({ limit, skip });
+                  const result = await collectionMethod(...queryArgs).toArray();
+              
                   const totalPages = Math.ceil(total / limit);
-                  
+              
                   let response;
                   if (hidden && Array.isArray(hidden)) {
                     const resultWithHiddenFieldsRemoved = result.map((item) => {
@@ -277,7 +263,7 @@ module.exports = function (clientConfig, connections) {
                   } else {
                     response = result;
                   }
-                  
+              
                   if (paging) {
                     const { page = 1, limit = 10 } = paging;
                     const totalPages = Math.ceil(total / limit);
@@ -289,11 +275,11 @@ module.exports = function (clientConfig, connections) {
                   } else {
                     res.status(200).json(response);
                   }
-                  
                 } catch (err) {
                   res.status(500).json({ message: err.message });
                 }
-            });
+              });
+              
               
             
             // Search for documents in a collection
