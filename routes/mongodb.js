@@ -220,7 +220,9 @@ module.exports = function (clientConfig, connections) {
                 const collectionName = req.params.collection;
                 const collection = db.collection(collectionName);
                 try {
-                  const { method, args, hidden } = req.body;
+                  const { method, args, hidden, paging } = req.body || {};
+                  const { page = 1, limit = 10 } = paging || {};
+                  const skip = (page - 1) * limit;
               
                   if (!method || !Array.isArray(args)) {
                     res.status(400).json({ message: `Invalid request format` });
@@ -228,7 +230,6 @@ module.exports = function (clientConfig, connections) {
                   }
               
                   if (method === `aggregate`) {
-                    // Convert string ObjectIds to ObjectId instances
                     args[0] = args[0].map((stage) => {
                       for (const key in stage) {
                         if (stage[key] instanceof Object) {
@@ -243,39 +244,56 @@ module.exports = function (clientConfig, connections) {
                     });
                   }
               
-                    if (method === `find`) {
-                        // Convert array of string ObjectIds to array of ObjectId instances
-                        if (args[0]._id?.$in && Array.isArray(args[0]._id.$in)) {
-                            args[0]._id.$in = args[0]._id.$in.map((id) => safeObjectId(id));
-                        }
+                  if (method === `find`) {
+                    if (args[0]._id?.$in && Array.isArray(args[0]._id.$in)) {
+                      args[0]._id.$in = args[0]._id.$in.map((id) => safeObjectId(id));
                     }
-
-                    if (hidden && Array.isArray(hidden)) { // Check if hidden field exists and is an array
-                        const projectionObject = {};
-                        for (const field of hidden) {
-                            projectionObject[field] = 0;
-                        }
-                        args.push(projectionObject); // Add projection object to args array
+                  }
+              
+                  if (hidden && Array.isArray(hidden)) {
+                    const projectionObject = {};
+                    for (const field of hidden) {
+                      projectionObject[field] = 0;
                     }
-                    
-                    const result = await collection[method](...args).toArray(); // Handle the results as an array directly
-                    
-                    if (hidden && Array.isArray(hidden)) { // Check if hidden field exists and is an array
-                        const resultWithHiddenFieldsRemoved = result.map(item => {
-                            for (const field of hidden) {
-                                delete item[field]; // Delete the field if it exists in the item
-                            }
-                            return item;
-                        });
-                        res.status(200).json(resultWithHiddenFieldsRemoved); // Send the modified result to the client
-                    } else {
-                        res.status(200).json(result); // Send the original result to the client if the hidden field is not provided
-                    }
+                    args.push(projectionObject);
+                  }
+              
+                  const total = await collection[method](...args).count();
+              
+                  args.push({ limit, skip });
+                  const result = await collection[method](...args).toArray();
+              
+                  const totalPages = Math.ceil(total / limit);
+              
+                  if (hidden && Array.isArray(hidden)) {
+                    const resultWithHiddenFieldsRemoved = result.map((item) => {
+                      for (const field of hidden) {
+                        delete item[field];
+                      }
+                      return item;
+                    });
+                    res.status(200).json({
+                      data: resultWithHiddenFieldsRemoved,
+                      total,
+                      paging: paging
+                        ? { page: page, limit: limit, totalPages: totalPages }
+                        : undefined
+                    });
+                  } else {
+                    res.status(200).json({
+                      data: result,
+                      total,
+                      paging: paging
+                        ? { page: page, limit: limit, totalPages: totalPages }
+                        : undefined
+                    });
+                  }
                 } catch (err) {
                   res.status(500).json({ message: err.message });
                 }
-            });
+              });
               
+            
             // Search for documents in a collection
             router.post(`/${item.clientToken}/:collection/search`, setCustomHeader, async (req, res) => {
                 const collectionName = req.params.collection;
