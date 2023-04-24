@@ -229,59 +229,45 @@ module.exports = function (clientConfig, connections) {
                     return;
                   }
               
-                  const collectionMethod = collection[method];
-                  const queryArgs = Array.isArray(args) ? args.slice() : [];
-              
-                  if (method === "find" && queryArgs[0] && queryArgs[0]._id?.$in) {
-                    queryArgs[0]._id.$in = queryArgs[0]._id.$in.map((id) => safeObjectId(id));
-                  }
-              
-                  if (hidden && Array.isArray(hidden)) {
-                    const projectionObject = {};
-                    for (const field of hidden) {
-                      projectionObject[field] = 0;
-                    }
-                    queryArgs.push(projectionObject);
-                  }
-              
-                  const total = await collectionMethod(...queryArgs).count();
-              
-                  queryArgs.push({ limit, skip });
-                  const result = await collectionMethod(...queryArgs).toArray();
-              
-                  const totalPages = Math.ceil(total / limit);
-              
-                  let response;
-                  if (hidden && Array.isArray(hidden)) {
-                    const resultWithHiddenFieldsRemoved = result.map((item) => {
-                      for (const field of hidden) {
-                        delete item[field];
-                      }
-                      return item;
-                    });
-                    response = resultWithHiddenFieldsRemoved;
-                  } else {
-                    response = result;
-                  }
-              
-                  if (paging) {
-                    const { page = 1, limit = 10 } = paging;
+                  if (method === `find`) {
+                    const query = args[0];
+                    const projection = hidden ? hidden.reduce((obj, field) => {
+                      obj[field] = 0;
+                      return obj;
+                    }, {}) : null;
+                    const result = await collection[method](query, projection).skip(skip).limit(limit).toArray();
+                    const total = await collection[method](query).count();
                     const totalPages = Math.ceil(total / limit);
-                    res.status(200).json({
-                      data: response,
-                      total,
-                      paging: { page, limit, totalPages }
-                    });
+              
+                    let response = result;
+                    if (hidden && Array.isArray(hidden)) {
+                      response = result.map((item) => {
+                        for (const field of hidden) {
+                          delete item[field];
+                        }
+                        return item;
+                      });
+                    }
+              
+                    if (paging) {
+                      const { page = 1, limit = 10 } = paging;
+                      res.status(200).json({
+                        data: response,
+                        total,
+                        paging: { page, limit, totalPages }
+                      });
+                    } else {
+                      res.status(200).json(response);
+                    }
                   } else {
-                    res.status(200).json(response);
+                    // Handle other methods here
+                    res.status(400).json({ message: `Method not supported` });
                   }
                 } catch (err) {
                   res.status(500).json({ message: err.message });
                 }
-              });
+            });
               
-              
-            
             // Search for documents in a collection
             router.post(`/${item.clientToken}/:collection/search`, setCustomHeader, async (req, res) => {
                 const collectionName = req.params.collection;
