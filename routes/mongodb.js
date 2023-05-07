@@ -273,7 +273,31 @@ module.exports = function (clientConfig, connections) {
                   res.status(500).json({ message: err.message });
                 }
             });
+
+            router.post(`/${item.clientToken}/:collection/aggregate`, setCustomHeader, async (req, res) => {
+                const collectionName = req.params.collection;
+                const collection = db.collection(collectionName);
+                try {
+                  const { pipeline } = req.body || {};
               
+                  if (!Array.isArray(pipeline)) {
+                    res.status(400).json({ message: `Invalid request format` });
+                    return;
+                  }
+              
+                  // Apply additional modifications to the pipeline as needed
+                  const modifiedPipeline = pipeline.map((stage) => {
+                    // Add any additional modifications to the pipeline stages here
+                    return stage;
+                  });
+              
+                  const result = await collection.aggregate(modifiedPipeline).toArray();
+                  res.status(200).json(result);
+                } catch (err) {
+                  res.status(500).json({ message: err.message });
+                }
+            });
+            
             // Search for documents in a collection
             router.post(`/${item.clientToken}/:collection/search`, setCustomHeader, async (req, res) => {
                 const collectionName = req.params.collection;
