@@ -217,62 +217,79 @@ module.exports = function (clientConfig, connections) {
             });
     
             router.post(`/${item.clientToken}/:collection/query`, setCustomHeader, async (req, res) => {
-                const collectionName = req.params.collection;
-                const collection = db.collection(collectionName);
-                try {
-                  const { method, args, hidden, paging } = req.body || {};
-                  const { page = 1, limit = 10 } = paging || {};
-                  const skip = (page - 1) * limit;
-              
-                  if (!method || !Array.isArray(args)) {
-                    res.status(400).json({ message: `Invalid request format` });
-                    return;
-                  }
-              
-                  if (method === `find`) {
-                    const query = args[0];
-
-                    if (args[0]._id?.$in && Array.isArray(args[0]._id.$in)) {
-                        args[0]._id.$in = args[0]._id.$in.map((id) => safeObjectId(id));
-                    }
-
-                    const projection = hidden ? hidden.reduce((obj, field) => {
+              const collectionName = req.params.collection;
+              const collection = db.collection(collectionName);
+            
+              const { method, args, hidden, paging } = req.body || {};
+              let { page = 1, limit = 10 } = paging || {};
+              const skip = (page - 1) * limit;
+            
+              if (limit === 0) {
+                limit = undefined;
+              }
+            
+              if (!method || !Array.isArray(args)) {
+                res.status(400).json({ message: `Invalid request format` });
+                return;
+              }
+            
+              if (method === `find`) {
+                const query = args[0];
+            
+                if (args[0]._id?.$in && Array.isArray(args[0]._id.$in)) {
+                  args[0]._id.$in = args[0]._id.$in.map((id) => safeObjectId(id));
+                }
+            
+                const projection = hidden
+                  ? hidden.reduce((obj, field) => {
                       obj[field] = 0;
                       return obj;
-                    }, {}) : null;
-
-                    const result = await collection[method](query, projection).skip(skip).limit(limit).toArray();
-                    const total = await collection[method](query).count();
-                    const totalPages = Math.ceil(total / limit);
-              
-                    let response = result;
-                    if (hidden && Array.isArray(hidden)) {
-                      response = result.map((item) => {
-                        for (const field of hidden) {
-                          delete item[field];
-                        }
-                        return item;
-                      });
-                    }
-              
-                    if (paging) {
-                      const { page = 1, limit = 10 } = paging;
-                      res.status(200).json({
-                        data: response,
-                        total,
-                        paging: { page, limit, totalPages }
-                      });
-                    } else {
-                      res.status(200).json(response);
-                    }
-                  } else {
-                    // Handle other methods here
-                    res.status(400).json({ message: `Method not supported` });
-                  }
-                } catch (err) {
-                  res.status(500).json({ message: err.message });
+                    }, {})
+                  : null;
+            
+                let result;
+                let total;
+            
+                if (limit !== undefined) {
+                  result = await collection[method](query, projection)
+                    .skip(skip)
+                    .limit(limit)
+                    .toArray();
+            
+                  total = await collection[method](query).count();
+                } else {
+                  result = await collection[method](query, projection).toArray();
+                  total = result.length;
                 }
+            
+                const totalPages = Math.ceil(total / limit);
+            
+                let response = result;
+                if (hidden && Array.isArray(hidden)) {
+                  response = result.map((item) => {
+                    for (const field of hidden) {
+                      delete item[field];
+                    }
+                    return item;
+                  });
+                }
+            
+                if (paging) {
+                  const { page = 1, limit = 10 } = paging;
+                  res.status(200).json({
+                    data: response,
+                    total,
+                    paging: { page, limit, totalPages },
+                  });
+                } else {
+                  res.status(200).json(response);
+                }
+              } else {
+                // Handle other methods here
+                res.status(400).json({ message: `Method not supported` });
+              }
             });
+            
 
             router.post(`/${item.clientToken}/:collection/aggregate`, setCustomHeader, async (req, res) => {
                 const collectionName = req.params.collection;
