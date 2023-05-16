@@ -43,18 +43,23 @@ module.exports = function (clientConfig, connections) {
           totalItems = results.length.toString(); // Convert to string
         }
     
+        // Convert BigInt values to strings in the results
+        const convertedResults = results.map(result => ({
+          ...result,
+          student_id: result.student_id.toString(),
+          school_id: result.school_id.toString(),
+        }));
+    
         res.send({
-          data: results,
+          data: convertedResults,
           totalItems: totalItems,
         });
       } catch (error) {
         console.error(error); // Log the error message for debugging
         res.status(500).send('Error executing query: ' + error.message);
       }
-    });
+    });    
     
-      
-
   });
 
   async function executeQuery(connection, query) {
