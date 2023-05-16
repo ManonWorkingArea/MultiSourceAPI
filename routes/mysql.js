@@ -18,19 +18,43 @@ module.exports = function (clientConfig, connections) {
 
     router.post(`/${clientToken}/query`, setCustomHeader, async (req, res) => {
       const { clientToken: urlClientToken, query } = req.body;
-
+    
       if (!query) {
-        return res.status(400).send('Query parameter is required');
+        return res.status(400).send('Query parameter is required', query);
       }
-
+    
       try {
-        const results = await executeQuery(connection, query);
-        res.send(results);
+        const { mainQuery, countQuery } = query;
+    
+        // Initialize variables
+        let countResults;
+        let totalItems;
+    
+        // Execute the main query to retrieve the data
+        const results = await executeQuery(connection, mainQuery);
+    
+        // Check if countQuery is provided
+        if (countQuery) {
+          // Execute the count query to retrieve the total count
+          countResults = await executeQuery(connection, countQuery);
+          totalItems = countResults[0].total_count.toString(); // Convert BigInt to string
+        } else {
+          // Use the length of the results as the total count
+          totalItems = results.length.toString(); // Convert to string
+        }
+    
+        res.send({
+          data: results,
+          totalItems: totalItems,
+        });
       } catch (error) {
-        console.error(error);
-        res.status(500).send('Error executing query');
+        console.error(error); // Log the error message for debugging
+        res.status(500).send('Error executing query: ' + error.message);
       }
     });
+    
+      
+
   });
 
   async function executeQuery(connection, query) {
@@ -48,6 +72,6 @@ module.exports = function (clientConfig, connections) {
       }
     }
   }
-
+  
   return router;
 }
