@@ -59,24 +59,37 @@ module.exports = function (clientConfig, connections) {
         res.status(500).send('Error executing query: ' + error.message);
       }
     });    
-    
+
   });
 
-  async function executeQuery(connection, query) {
-    let conn;
+async function executeQuery(connection, query) {
+  let conn;
 
-    try {
-      conn = await mariadb.createConnection(connection);
-      const result = await conn.query(query);
-      return result;
-    } catch (error) {
-      throw error;
-    } finally {
-      if (conn) {
-        conn.end();
+  try {
+    conn = await mariadb.createConnection(connection);
+    const result = await conn.query(query);
+
+    // Convert BigInt values to strings in the result
+    const convertedResult = result.map(row => {
+      const convertedRow = { ...row };
+      for (const column in convertedRow) {
+        if (typeof convertedRow[column] === 'bigint') {
+          convertedRow[column] = convertedRow[column].toString();
+        }
       }
+      return convertedRow;
+    });
+
+    return convertedResult;
+  } catch (error) {
+    throw error;
+  } finally {
+    if (conn) {
+      conn.end();
     }
   }
+}
+
   
   return router;
 }
