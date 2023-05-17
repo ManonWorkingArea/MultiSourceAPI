@@ -123,6 +123,29 @@ module.exports = function (clientConfig, connections) {
                             }
                         });
                     }
+
+                    if (options && options.existingFields) {
+                      let existingFields = [];
+                      for (let i = 0; i < options.existingFields.length; i++) {
+                        const fields = options.existingFields[i];
+                    
+                        // Check if all fields have values in the data object
+                        if (fields.every(field => data[field])) {
+                          const existingItem = await collection.findOne({
+                            $or: fields.map(field => ({ [field]: data[field] }))
+                          });
+                    
+                          if (existingItem) {
+                            existingFields = [...existingFields, ...fields];
+                          }
+                        }
+                      }
+                    
+                      if (existingFields.length > 0) {
+                        res.status(400).json({ message: "existing", fields: existingFields });
+                        return;
+                      }
+                    }
             
                     if (options && options.uniqueFields) {
                         let duplicateFields = [];
