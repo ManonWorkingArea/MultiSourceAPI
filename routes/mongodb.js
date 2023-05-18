@@ -308,8 +308,12 @@ module.exports = function (clientConfig, connections) {
                   } else {
                     res.status(200).json(response);
                   }
+                } else if (method === 'aggregate') {
+                  const pipeline = args;
+            
+                  const result = await collection.aggregate(pipeline).toArray();
+                  res.status(200).json(result);
                 } else {
-                  // Handle other methods here
                   res.status(400).json({ message: `Method not supported` });
                 }
               } catch (err) {
