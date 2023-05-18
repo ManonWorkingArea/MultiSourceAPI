@@ -241,54 +241,64 @@ module.exports = function (clientConfig, connections) {
     
             router.post(`/${item.clientToken}/:collection/query`, setCustomHeader, async (req, res) => {
               try {
+                // Extracting collection name from the request parameters
                 const collectionName = req.params.collection;
                 const collection = db.collection(collectionName);
-              
+                
+                // Extracting request body parameters
                 const { method, args, hidden, paging } = req.body || {};
                 let { page = 1, limit = 10 } = paging || {};
                 const skip = (page - 1) * limit;
-              
+                
+                // Checking if limit is 0 and adjusting it accordingly
                 if (limit === 0) {
                   limit = undefined;
                 }
-              
+                
+                // Validating the request format
                 if (!method || !Array.isArray(args)) {
                   res.status(400).json({ message: `Invalid request format` });
                   return;
                 }
-              
+                
                 if (method === `find`) {
+                  // Handling the find method
                   const query = args[0];
-              
+                  
+                  // Mapping the _id.$in values to safe object IDs
                   if (args[0]._id?.$in && Array.isArray(args[0]._id.$in)) {
                     args[0]._id.$in = args[0]._id.$in.map((id) => safeObjectId(id));
                   }
-              
+                  
+                  // Setting the projection based on hidden fields
                   const projection = hidden
                     ? hidden.reduce((obj, field) => {
                         obj[field] = 0;
                         return obj;
                       }, {})
                     : null;
-              
+                  
                   let result;
                   let total;
-              
+                  
+                  // Performing the find operation with pagination
                   if (limit !== undefined) {
                     result = await collection[method](query, projection)
                       .skip(skip)
                       .limit(limit)
                       .toArray();
-              
+                    
                     total = await collection[method](query).count();
                   } else {
                     result = await collection[method](query, projection).toArray();
                     total = result.length;
                   }
-              
+                  
                   const totalPages = Math.ceil(total / limit);
-              
+                  
                   let response = result;
+                  
+                  // Removing hidden fields from the response
                   if (hidden && Array.isArray(hidden)) {
                     response = result.map((item) => {
                       for (const field of hidden) {
@@ -297,7 +307,8 @@ module.exports = function (clientConfig, connections) {
                       return item;
                     });
                   }
-              
+                  
+                  // Sending the response with pagination details if provided
                   if (paging) {
                     const { page = 1, limit = 10 } = paging;
                     res.status(200).json({
@@ -309,14 +320,18 @@ module.exports = function (clientConfig, connections) {
                     res.status(200).json(response);
                   }
                 } else if (method === 'aggregate') {
+                  // Handling the aggregate method
                   const pipeline = args;
-            
+                  
+                  // Performing the aggregate operation
                   const result = await collection.aggregate(pipeline).toArray();
                   res.status(200).json(result);
                 } else {
+                  // Handling unsupported methods
                   res.status(400).json({ message: `Method not supported` });
                 }
               } catch (err) {
+                // Handling any errors that occur
                 console.error(err);
                 res.status(500).json({ message: "An error occurred" });
               }
