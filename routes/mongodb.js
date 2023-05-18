@@ -350,8 +350,16 @@ module.exports = function (clientConfig, connections) {
             
                 // Apply additional modifications to the pipeline as needed
                 const modifiedPipeline = pipeline.map((stage) => {
-                  // Add any additional modifications to the pipeline stages here
-                  return stage;
+                  // Check if any field in the stage requires ObjectId conversion
+                  const convertedStage = { ...stage };
+                  for (const field in convertedStage) {
+                    if (convertedStage.hasOwnProperty(field)) {
+                      if (typeof convertedStage[field] === 'string' || typeof convertedStage[field] === 'number') {
+                        convertedStage[field] = safeObjectId(convertedStage[field]);
+                      }
+                    }
+                  }
+                  return convertedStage;
                 });
             
                 const result = await collection.aggregate(modifiedPipeline).toArray();
@@ -360,6 +368,7 @@ module.exports = function (clientConfig, connections) {
                 res.status(500).json({ message: err.message });
               }
             });
+            
             
             // Search for documents in a collection
             router.post(`/${item.clientToken}/:collection/search`, setCustomHeader, async (req, res) => {
