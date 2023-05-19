@@ -82,31 +82,6 @@ module.exports = function (clientConfig, connections) {
                 }
             });
 
-            router.post(`/${item.clientToken}/:collection/count`, setCustomHeader, async (req, res) => {
-                const collectionName = req.params.collection;
-                const collection = db.collection(collectionName);
-                try {
-                  const { method, args } = req.body;
-                
-                  if (!method || !Array.isArray(args)) {
-                    res.status(400).json({ message: `Invalid request format` });
-                    return;
-                  }
-                
-                  if (method === `find`) {
-                    const count = await collection.countDocuments(args[0]);
-                    console.log("Count result:", count);
-                    res.status(200).json(count);
-                  } else {
-                    const result = await collection[method](...args).toArray();
-                    console.log("Query result:", result);
-                    res.status(200).json(result);
-                  }
-                } catch (err) {
-                  res.status(500).json({ message: err.message });
-                }
-            });
-              
             router.post(`/${item.clientToken}/:collection`, setCustomHeader, async (req, res) => {
                 const collectionName = req.params.collection;
                 const collection = db.collection(collectionName);
@@ -390,7 +365,7 @@ module.exports = function (clientConfig, connections) {
             
                 // Validating the request format
                 if (!Array.isArray(args)) {
-                  res.status(400).json({ message: `Invalid request format` });
+                  res.status(400).json({ message: `Invalid request format - ` . req.body });
                   return;
                 }
             
