@@ -378,6 +378,37 @@ module.exports = function (clientConfig, connections) {
                 res.status(500).json({ message: err.message });
                 }
             });
+
+            router.post(`/${item.clientToken}/:collection/count`, setCustomHeader, async (req, res) => {
+              try {
+                // Extracting collection name from the request parameters
+                const collectionName = req.params.collection;
+                const collection = db.collection(collectionName);
+                
+                // Extracting query from the request body
+                const { query } = req.body || {};
+                
+                // Validating the request format
+                if (!query) {
+                  res.status(400).json({ message: `Invalid request format. Query is required` });
+                  return;
+                }
+                
+                // Mapping the _id.$in values to safe object IDs
+                if (query._id?.$in && Array.isArray(query._id.$in)) {
+                  query._id.$in = query._id.$in.map((id) => safeObjectId(id));
+                }
+                
+                // Performing the count operation
+                const count = await collection.countDocuments(query);
+                
+                res.status(200).json({ count });
+              } catch (err) {
+                // Handling any errors that occur
+                console.error(err);
+                res.status(500).json({ message: "An error occurred" });
+              }
+            });
     
             // Add, update, or remove an element in a subarray of a document
             router.post(`/${item.clientToken}/:collection/:documentId/:arrayField`, setCustomHeader, async (req, res) => {
