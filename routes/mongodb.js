@@ -384,24 +384,21 @@ module.exports = function (clientConfig, connections) {
                 // Extracting collection name from the request parameters
                 const collectionName = req.params.collection;
                 const collection = db.collection(collectionName);
-                
-                // Extracting query from the request body
-                const { query } = req.body || {};
-                
+            
+                // Extracting request body parameters
+                const { args } = req.body || {};
+            
                 // Validating the request format
-                if (!query) {
-                  res.status(400).json({ message: `Invalid request format. Query is required` });
+                if (!Array.isArray(args)) {
+                  res.status(400).json({ message: `Invalid request format` });
                   return;
                 }
-                
-                // Mapping the _id.$in values to safe object IDs
-                if (query._id?.$in && Array.isArray(query._id.$in)) {
-                  query._id.$in = query._id.$in.map((id) => safeObjectId(id));
-                }
-                
+            
                 // Performing the count operation
+                const query = { $and: args };
                 const count = await collection.countDocuments(query);
-                
+            
+                // Sending the count as the response
                 res.status(200).json({ count });
               } catch (err) {
                 // Handling any errors that occur
