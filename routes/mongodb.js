@@ -222,7 +222,7 @@ module.exports = function (clientConfig, connections) {
                 
                 // Extracting request body parameters
                 const { method, args, hidden, paging } = req.body || {};
-                let { page = 1, limit = 10 } = paging || {};
+                let { page = 1, limit = 100 } = paging || {};
                 const skip = (page - 1) * limit;
                 
                 // Checking if limit is 0 and adjusting it accordingly
@@ -285,7 +285,7 @@ module.exports = function (clientConfig, connections) {
                   
                   // Sending the response with pagination details if provided
                   if (paging) {
-                    const { page = 1, limit = 10 } = paging;
+                    const { page = 1, limit = 100 } = paging;
                     res.status(200).json({
                       data: response,
                       total,

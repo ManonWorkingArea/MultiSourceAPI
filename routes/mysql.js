@@ -33,25 +33,10 @@ module.exports = function (clientConfig, connections) {
         // Execute the main query to retrieve the data
         const results = await executeQuery(connection, mainQuery);
     
-        // Check if countQuery is provided
-        if (countQuery) {
-          // Execute the count query to retrieve the total count
-          countResults = await executeQuery(connection, countQuery);
-          totalItems = countResults[0].total_count.toString(); // Convert BigInt to string
-        } else {
-          // Use the length of the results as the total count
-          totalItems = results.length.toString(); // Convert to string
-        }
-    
-        // Convert BigInt values to strings in the results
-        const convertedResults = results.map(result => ({
-          ...result,
-          student_id: result.student_id.toString(),
-          school_id: result.school_id.toString(),
-        }));
+        
     
         res.send({
-          data: convertedResults,
+          data: results,
           totalItems: totalItems,
         });
       } catch (error) {
