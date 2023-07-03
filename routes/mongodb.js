@@ -219,32 +219,32 @@ module.exports = function (clientConfig, connections) {
                 // Extracting collection name from the request parameters
                 const collectionName = req.params.collection;
                 const collection = db.collection(collectionName);
-                
+            
                 // Extracting request body parameters
-                const { method, args, hidden, paging } = req.body || {};
+                const { method, args, hidden, paging, sort } = req.body || {};
                 let { page = 1, limit = 100 } = paging || {};
                 const skip = (page - 1) * limit;
-                
+            
                 // Checking if limit is 0 and adjusting it accordingly
                 if (limit === 0) {
                   limit = undefined;
                 }
-                
+            
                 // Validating the request format
                 if (!method || !Array.isArray(args)) {
                   res.status(400).json({ message: `Invalid request format` });
                   return;
                 }
-                
+            
                 if (method === `find`) {
                   // Handling the find method
                   const query = args[0];
-                  
+            
                   // Mapping the _id.$in values to safe object IDs
-                  if (args[0]._id?.$in && Array.isArray(args[0]._id.$in)) {
-                    args[0]._id.$in = args[0]._id.$in.map((id) => safeObjectId(id));
+                  if (query._id?.$in && Array.isArray(query._id.$in)) {
+                    query._id.$in = query._id.$in.map((id) => safeObjectId(id));
                   }
-                  
+            
                   // Setting the projection based on hidden fields
                   const projection = hidden
                     ? hidden.reduce((obj, field) => {
@@ -252,27 +252,30 @@ module.exports = function (clientConfig, connections) {
                         return obj;
                       }, {})
                     : null;
-                  
+            
                   let result;
                   let total;
-                  
-                  // Performing the find operation with pagination
+            
+                  // Performing the find operation with pagination and sorting
                   if (limit !== undefined) {
                     result = await collection[method](query, projection)
                       .skip(skip)
                       .limit(limit)
+                      .sort(sort) // Add sorting option
                       .toArray();
-                    
+            
                     total = await collection[method](query).count();
                   } else {
-                    result = await collection[method](query, projection).toArray();
+                    result = await collection[method](query, projection)
+                      .sort(sort) // Add sorting option
+                      .toArray();
                     total = result.length;
                   }
-                  
+            
                   const totalPages = Math.ceil(total / limit);
-                  
+            
                   let response = result;
-                  
+            
                   // Removing hidden fields from the response
                   if (hidden && Array.isArray(hidden)) {
                     response = result.map((item) => {
@@ -282,7 +285,7 @@ module.exports = function (clientConfig, connections) {
                       return item;
                     });
                   }
-                  
+            
                   // Sending the response with pagination details if provided
                   if (paging) {
                     const { page = 1, limit = 100 } = paging;
@@ -297,7 +300,7 @@ module.exports = function (clientConfig, connections) {
                 } else if (method === 'aggregate') {
                   // Handling the aggregate method
                   const pipeline = args;
-                  
+            
                   // Performing the aggregate operation
                   const result = await collection.aggregate(pipeline).toArray();
                   res.status(200).json(result);
@@ -311,6 +314,7 @@ module.exports = function (clientConfig, connections) {
                 res.status(500).json({ message: "An error occurred" });
               }
             });
+            
             
             router.post(`/${item.clientToken}/:collection/aggregate`, setCustomHeader, async (req, res) => {
               const collectionName = req.params.collection;
