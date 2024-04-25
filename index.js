@@ -26,7 +26,7 @@ async function initializeApp() {
     const db = mongoClient.db('API');
     global.ClientConfiguration = await db.collection('clients').find().toArray();
 
-    setupRoutes(app, global.ClientConfiguration);
+    setupRoutes(app, global.ClientConfiguration); 
 
     const server = app.listen(process.env.PORT, () => {
       console.log(`Server is running on port ${process.env.PORT}`);
