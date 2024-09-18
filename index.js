@@ -25,6 +25,8 @@ async function initializeApp() {
     const clientConfigs = await db.collection('clients').find().toArray();
     await mongoClient.close();
 
+    console.log("clientConfigs",clientConfigs);
+
     global.ClientConfiguration = clientConfigs;
 
     setupRoutes(app, clientConfigs);
